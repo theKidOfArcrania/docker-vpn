@@ -7,6 +7,7 @@ if [ $# -ge 1 ]; then
   shift
 fi
 
+sudo docker build . -t vpndocker
 sudo docker run -it -p $PORT:1194/udp \
   --cap-add=net_admin --rm \
   --name vpndocker \

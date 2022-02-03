@@ -24,5 +24,6 @@ if [ $HAS_IP -eq 0 ]; then
   usage
 fi
 
+sudo docker build . -t vpndocker
 sudo docker run -a stderr -a stdout \
   --cap-add=net_admin --rm vpndocker genclient "${ARGS[@]}" > $OUTPUT
