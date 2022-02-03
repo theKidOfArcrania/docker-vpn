@@ -15,3 +15,14 @@ server and VPN server under the `.certs/ca` and `.certs/server` directories.
 ## Running the VPN
 Once initialized, you can modify VPN configurations under the
 `.certs/server/vpnconf` directory to customize your VPN.
+
+Then to start up the VPN, run:
+```
+./run_vpn.sh
+```
+
+## Creating client configurations
+To create client configurations, run the command:
+```
+./create_client.sh -i <IP of your host machine> -n <client name>
+```
