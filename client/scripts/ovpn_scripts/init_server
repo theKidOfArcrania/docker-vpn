@@ -1,0 +1,59 @@
+#!/bin/bash
+
+CERTD=/mnt/certs/server
+OUTPUT=$CERTD/vpnconf
+CA_PATH=/mnt/certs/ca/pki/ca.crt
+
+set -e
+
+if [ ! -f $CA_PATH ]; then
+  echo "Need to run \`ovpn init ca\` first." >&2
+  exit 1
+fi
+
+if [ -f $OUTPUT/.init_server ]; then
+  echo "Server config already initialized" >&2
+  exit 0
+fi
+
+### Set up VPN server
+# https://www.digitalocean.com/community/tutorials/how-to-set-up-and-configure-an-openvpn-server-on-ubuntu-20-04
+# Step 1: Install openVPN and easy-rsa
+
+# Step 2: Create a PKI for openVPN
+mkdir -p $CERTD
+cd $CERTD
+ln -fs /usr/share/easy-rsa/* .
+./easyrsa init-pki
+
+# Step 3/4: Create an openVPN server certificate request and sign it
+mkdir -p $OUTPUT
+ovpn mkcert server server $OUTPUT
+cp $CA_PATH $OUTPUT
+
+# Step 5: Configuring OpenVPN Cryptographic Material
+openvpn --genkey --secret $OUTPUT/ta.key
+
+# Step 6: Configuring client configs
+
+# Step 7: Configuring openVPN
+cd $OUTPUT
+cp /usr/share/doc/openvpn/examples/sample-config-files/server.conf.gz .
+gunzip server.conf.gz
+cp server.conf server.conf.old
+sed -i -e '/tls-auth/ {' \
+  -e   's/^/;/ ' \
+  -e   'atls-crypt ta.key' \
+  -e '}' \
+  -e '/cipher AES-256-CBC/ {' \
+  -e   'icipher AES-256-GCM' \
+  -e   'aauth SHA256' \
+  -e   'd' \
+  -e '}' \
+  -e '/dh dh2048/ {' \
+  -e   's/^/;/ ' \
+  -e   'adh none' \
+  -e '}' \
+  -e 's/;\(user nobody\|group nogroup\)/\1/' \
+  server.conf
+touch .init_server

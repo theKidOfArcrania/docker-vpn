@@ -1,0 +1,15 @@
+version: '2'
+
+services:
+  manage_cert:
+    build: .
+    user: root
+    volumes:
+      - .certs:/mnt/certs
+  vpn_run:
+    build: .
+    user: root
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - .certs/server/vpnconf:/mnt/vpnconfig:ro

@@ -1,0 +1,45 @@
+#!/bin/bash
+
+PROG="${PROG:-$0} "
+export SCRIPTPATH="$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)"
+
+TOPLEVEL=1
+usage() {
+  cd "$SCRIPTPATH"
+  CMDS=""
+  for file in init_*; do
+    CMD=${file#init_}
+    if [ -z "$CMDS" ]; then
+      CMDS="$CMD"
+    else
+      CMDS="$CMDS|$CMD"
+    fi
+  done
+  echo "Usage: ${PROG}COMMAND ..." >&2
+  echo "  where COMMAND ::= {$CMDS}" >&2
+  exit 1
+}
+
+runcmd() {
+  CMD="$1"
+  EXE="$SCRIPTPATH/init_$CMD"
+  if [ $# -eq 0 ]; then
+    usage
+  elif [ "$CMD" = "help" ]; then
+    usage
+  elif ! [ -f $EXE ]; then
+    echo "Invalid command: $CMD" >&2
+    if [ $TOPLEVEL -eq 1 ]; then
+      usage
+    else
+      exit 1
+    fi
+  fi
+
+  export PROG="$PROG$CMD"
+  shift
+  "$EXE" "$@"
+}
+
+runcmd "$@"
+

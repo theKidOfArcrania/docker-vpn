@@ -7,8 +7,5 @@ if [ $# -ge 1 ]; then
   shift
 fi
 
-sudo docker build . -t vpndocker
-sudo docker run -it -p $PORT:1194/udp \
-  --cap-add=net_admin --rm \
-  --name vpndocker \
-  vpndocker run "$@"
+echo "VPN is now running at 0.0.0.0:1194"
+sudo docker-compose run --rm -p $PORT:1194/udp vpn_run

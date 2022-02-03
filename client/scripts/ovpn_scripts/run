@@ -1,0 +1,57 @@
+#!/bin/bash
+
+set -e
+
+PROG=${PROG:-$0}
+
+CACERTD=/mnt/certs/ca
+SERVERD=/mnt/certs/server
+VPNCONF=/mnt/vpnconfig
+CONF_DIR=/etc/openvpn
+
+fail() {
+  echo "ERROR: $PROG: $1" >&2
+  exit 1
+}
+
+if [ -f "$CACERTD/pki" ] || [ -f "$SERVERD/pki" ]; then
+  fail "Unnecessary mounts to ca or server certs have been detected. Refusing to run"
+fi
+
+if [ ! -f "$VPNCONF/.init_server" ]; then
+  fail "Cannot find VPN configuration files!"
+fi
+
+mkdir -p /dev/net
+if [ ! -c /dev/net/tun ]; then
+  mknod /dev/net/tun c 10 200
+fi
+
+# Step 7: Configuring OpenVPN
+cp $VPNCONF/* $CONF_DIR/
+IPNET="$(grep '^server ' $CONF_DIR/server.conf | awk '{ print $2 } ')"
+
+# Step 8: Adjusting the OpenVPN Server Networking Configuration
+# Step 9: Firewall configuration
+TEMP="$(mktemp)"
+cat > "$TEMP" <<EOF
+# START OPENVPN RULES
+# NAT table rules
+*nat
+:POSTROUTING ACCEPT [0:0]
+# Allow traffic from OpenVPN client to eth0
+-A POSTROUTING -s $IPNET/24 -o eth0 -j MASQUERADE
+COMMIT
+# END OPENVPN RULES
+EOF
+
+sed -i -e '/IPV6=/s/yes/no/' /etc/default/ufw
+sed -i -e "10r $TEMP" /etc/ufw/before.rules
+ufw route allow in on tun0 out on eth0
+ufw route allow in on tun0 out on tun0
+ufw allow 1194/udp
+ufw allow 53/udp
+ufw enable
+
+openvpn --cd $CONF_DIR --config $CONF_DIR/server.conf
+

@@ -1,0 +1,5 @@
+*.sw?
+/tmp*
+*.ovpn
+!**/.gitkeep
+.certs

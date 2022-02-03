@@ -1,0 +1,23 @@
+#!/bin/bash
+
+CERTD=/mnt/certs/ca
+
+set -e
+
+if [ -f $CERTD/pki/ca.crt ]; then
+  echo "CA already initialized" >&2
+  exit 0
+fi
+
+### Set up CA
+# https://www.digitalocean.com/community/tutorials/how-to-set-up-and-configure-a-certificate-authority-ca-on-ubuntu-20-04
+
+# Step 1: Install easy-rsa
+# Step 2: Preparing a Public Key Infrastructure Directory
+mkdir -p $CERTD
+cd $CERTD
+ln -fs /usr/share/easy-rsa/* .
+./easyrsa init-pki
+
+# Step 3: Creating a certificate authority
+echo | ./easyrsa build-ca nopass
