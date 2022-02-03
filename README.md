@@ -1,6 +1,6 @@
 # docker-vpn
 
-This fits an openvpn server configuration into a docker container.
+This fits an openvpn server within a docker container set up.
 
 ## Setting up VPN
 
