@@ -1,0 +1,47 @@
+#!/bin/bash
+
+PROG=$( (basename "$0" && echo " ") | tr -d '\n')
+export SCRIPTPATH="$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)"
+
+TOPLEVEL=1
+usage() {
+  cd "$SCRIPTPATH/ovpn_scripts/"
+  CMDS=""
+  for CMD in *; do
+    if [ -z "$CMDS" ]; then
+      CMDS="$CMD"
+    else
+      CMDS="$CMDS|$CMD"
+    fi
+  done
+  echo "Usage: ${PROG}COMMAND ..."
+  echo "  where COMMAND ::= {$CMDS}"
+  exit 1
+}
+
+runcmd() {
+  CMD="$1"
+  EXE="$SCRIPTPATH/ovpn_scripts/$CMD"
+  if [ $# -eq 0 ]; then
+    BASHRC='source ~/.bashrc; alias help="$(which help)"'
+    export PATH="$SCRIPTPATH/ovpn_scripts/:$SCRIPTPATH:$PATH"
+    unset PROG
+    bash --init-file <(echo "$BASHRC") -i
+    exit 0
+  elif [ "$CMD" = "help" ]; then
+    usage
+  elif ! [ -f $EXE ]; then
+    echo "Invalid command: $CMD"
+    if [ $TOPLEVEL -eq 1 ]; then
+      usage
+    else
+      exit 1
+    fi
+  fi
+
+  export PROG="$PROG$CMD"
+  shift
+  "$EXE" "$@"
+}
+
+runcmd "$@"

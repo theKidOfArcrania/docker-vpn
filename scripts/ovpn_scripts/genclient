@@ -1,0 +1,78 @@
+#!/bin/bash
+
+set -e
+
+IP_ADDR=""
+PORT=1194
+CLIENT_NAME=client$RANDOM
+OUTPUT=/dev/stdout
+PROG=${PROG:-$0}
+
+usage() {
+  echo "USAGE: $PROG -i IP [-p PORT] [-n CLIENT_NAME] [-o OUTPUT]" >&2
+  exit 1
+}
+
+while getopts "i:p:n:o:" option; do
+  case $option in
+    # Ip address
+    i) IP_ADDR=$OPTARG;;
+
+    # Port number
+    p)
+      PORT=$OPTARG
+      if [ -n "$(echo "$PORT" | tr -d '0-9')" ] || \
+        [ "$PORT" -gt 65535 -o ] || [ "$PORT" -lt 1 ]; then
+              echo "-p expects an integer value from 1 to 65535" >&2
+              usage
+      fi;;
+    # client Name
+    n) CLIENT_NAME=$OPTARG;;
+    # Output file
+    o) OUTPUT=$OPTARG;;
+    ?) usage;;
+  esac
+done
+
+if [ -z "$IP_ADDR" ]; then
+  echo "$PROG: Requires an IP address" >&2
+  usage
+fi
+
+
+TEMP=$(mktemp -d)
+pushd $TEMP > /dev/null
+
+ovpn mkcert client "$CLIENT_NAME" "$TEMP" >&2
+
+cp /usr/share/doc/openvpn/examples/sample-config-files/client.conf base.conf
+
+sed -i base.conf \
+  -e '/remote my-server-1/ {' \
+  -e   "iremote $IP_ADDR $PORT" \
+  -e   'd' \
+  -e '}' \
+  -e 's/;\(user nobody\|group nogroup\)/\1/' \
+  -e '/^\(ca\|cert\|key\|tls-auth\) /s/^/;/' \
+  -e '/^cipher / {' \
+  -e   'icipher AES-256-GCM' \
+  -e   'iauth SHA256' \
+  -e   'ikey-direction 1' \
+  -e   'd' \
+  -e '}'
+
+cat base.conf \
+  <(echo -e '<ca>') \
+  /etc/openvpn/server/ca.crt \
+  <(echo -e '</ca>\n<cert>') \
+  "$CLIENT_NAME.crt" \
+  <(echo -e '</cert>\n<key>') \
+  "$CLIENT_NAME.key" \
+  <(echo -e '</key>\n<tls-crypt>') \
+  /etc/openvpn/server/ta.key \
+  <(echo -e '</tls-crypt>') \
+  > "$CLIENT_NAME.ovpn"
+popd > /dev/null
+
+cp "$TEMP/$CLIENT_NAME.ovpn" "$OUTPUT"
+rm -r "$TEMP"
